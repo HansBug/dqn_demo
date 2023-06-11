@@ -57,3 +57,14 @@ class OneHotStateTransform(BaseStateTransform):
 
     def _trans(self, state: int):
         return F.one_hot(torch.tensor(state), num_classes=self.state_dims).float()
+
+
+@_register_state_trans('one_shot_xy')
+class OneHotStateTransform(BaseStateTransform):
+    def _input_dims(self):
+        return self.state_dims + 2
+
+    def _trans(self, state: int):
+        oh = F.one_hot(torch.tensor(state), num_classes=self.state_dims).float()
+        xy = torch.tensor([state // 12, state % 12]).float()
+        return torch.cat([oh, xy]).float()
