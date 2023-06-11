@@ -1,0 +1,6 @@
+gym==0.25.1
+torch
+tensorboard
+numpy
+tqdm
+DI-toolkit
