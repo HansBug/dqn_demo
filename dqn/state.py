@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from .base import _GLOBAL_DEVICE
-from .model import Network, CNN, CNN3
+from .model import Network, CNN, CNN3, CNN2
 
 _STATE_TRANS: Dict[str, Type['BaseStateTransform']] = {}
 
@@ -132,6 +132,17 @@ class CNNTransform(_BaseCNNTransform):
             self, state_dims, device,
             kernel_size=7, psize=2,
         )
+
+
+@_register_state_trans('cnn2')
+class CNN3Transform(BaseStateTransform):
+    def state_trans(self, state: int):
+        oh = F.one_hot(torch.tensor(state), num_classes=self.state_dims).float()
+        oh = oh.reshape(4, 12).unsqueeze(0)
+        return oh.to(self.device)
+
+    def create_model(self, action_dims: int) -> nn.Module:
+        return CNN2(action_dims)
 
 
 @_register_state_trans('cnn3')

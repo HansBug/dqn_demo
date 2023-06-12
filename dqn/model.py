@@ -50,6 +50,25 @@ class CNN(nn.Module):
         return x
 
 
+class CNN2(nn.Module):
+    def __init__(self, action_dims: int, psize: int = 1):
+        nn.Module.__init__(self)
+        self.cnn = nn.Sequential(
+            nn.Conv2d(1, 8, 3, padding=1, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(8, 64, 3, padding=0, bias=True),
+            nn.ReLU(inplace=True),
+        )
+        self.avgpool = nn.AdaptiveAvgPool2d((psize, psize))
+        self.fc = nn.Linear(64 * psize * psize, action_dims)
+
+    def forward(self, x):
+        x = self.cnn(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, -3)
+        return self.fc(x)
+
+
 class CNN3(nn.Module):
     def __init__(self, action_dims: int, psize: int = 1):
         nn.Module.__init__(self)
