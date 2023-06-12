@@ -26,18 +26,46 @@ class Network(nn.Module):
 
 
 class CNN(nn.Module):
-    def __init__(self, state_xy: Tuple[int, int], action_dims: int):
+    def __init__(self, state_xy: Tuple[int, int], action_dims: int,
+                 kernel_size: int = 3, channels: int = 64, psize: int = 1):
         nn.Module.__init__(self)
         self.state_xy = state_xy
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, bias=True)
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(64, action_dims)
+        x, y = self.state_xy
+
+        self.conv1 = nn.Conv2d(
+            1, channels, kernel_size=kernel_size,
+            padding=max(kernel_size - min(x, y), 0),
+            bias=True,
+        )
+        self.avgpool = nn.AdaptiveAvgPool2d((psize, psize))
+        self.fc = nn.Linear(channels * psize * psize, action_dims)
 
     def forward(self, x):
         # x : Bx1xHxW
         # assert x.shape[-2:] == self.state_xy
         x = torch.relu(self.conv1(x))
         x = self.avgpool(x)
-        x = torch.flatten(x, 1)
+        x = torch.flatten(x, -3)
         x = self.fc(x)
         return x
+
+
+class CNN3(nn.Module):
+    def __init__(self, action_dims: int, psize: int = 1):
+        nn.Module.__init__(self)
+        self.cnn = nn.Sequential(
+            nn.Conv2d(1, 8, 3, padding=1, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(8, 32, 3, padding=0, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 64, 3, padding=2, bias=True),
+            nn.ReLU(inplace=True),
+        )
+        self.avgpool = nn.AdaptiveAvgPool2d((psize, psize))
+        self.fc = nn.Linear(64 * psize * psize, action_dims)
+
+    def forward(self, x):
+        x = self.cnn(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, -3)
+        return self.fc(x)

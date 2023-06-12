@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from .base import _GLOBAL_DEVICE
-from .model import Network, CNN
+from .model import Network, CNN, CNN3
 
 _STATE_TRANS: Dict[str, Type['BaseStateTransform']] = {}
 
@@ -93,12 +93,53 @@ class OneHotStateTransform(SimpleStateTransform):
         return Network(self._input_dims(), action_dims)
 
 
-@_register_state_trans('cnn')
-class CNNTransform(BaseStateTransform):
+class _BaseCNNTransform(BaseStateTransform):
+    def __init__(self, state_dims, device=_GLOBAL_DEVICE, **kwargs):
+        BaseStateTransform.__init__(self, state_dims, device)
+        self.model_kwargs = kwargs
+
     def state_trans(self, state: int):
         oh = F.one_hot(torch.tensor(state), num_classes=self.state_dims).float()
         oh = oh.reshape(4, 12).unsqueeze(0)
         return oh.to(self.device)
 
     def create_model(self, action_dims: int) -> nn.Module:
-        return CNN((4, 12), action_dims)
+        return CNN((4, 12), action_dims, **self.model_kwargs)
+
+
+@_register_state_trans('cnn')
+class CNNTransform(_BaseCNNTransform):
+    def __init__(self, state_dims, device=_GLOBAL_DEVICE):
+        _BaseCNNTransform.__init__(
+            self, state_dims, device,
+            kernel_size=3, psize=1,
+        )
+
+
+@_register_state_trans('cnn_k5_p2')
+class CNNTransform(_BaseCNNTransform):
+    def __init__(self, state_dims, device=_GLOBAL_DEVICE):
+        _BaseCNNTransform.__init__(
+            self, state_dims, device,
+            kernel_size=5, psize=2,
+        )
+
+
+@_register_state_trans('cnn_k7_p2')
+class CNNTransform(_BaseCNNTransform):
+    def __init__(self, state_dims, device=_GLOBAL_DEVICE):
+        _BaseCNNTransform.__init__(
+            self, state_dims, device,
+            kernel_size=7, psize=2,
+        )
+
+
+@_register_state_trans('cnn3')
+class CNN3Transform(BaseStateTransform):
+    def state_trans(self, state: int):
+        oh = F.one_hot(torch.tensor(state), num_classes=self.state_dims).float()
+        oh = oh.reshape(4, 12).unsqueeze(0)
+        return oh.to(self.device)
+
+    def create_model(self, action_dims: int) -> nn.Module:
+        return CNN3(action_dims)

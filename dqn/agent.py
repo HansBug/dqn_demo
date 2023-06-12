@@ -33,7 +33,7 @@ class Agent:
 
     def _state_map(self, state):
         if self.state_trans is not None:
-            return self.state_trans.state_trans(state)
+            return self.state_trans.state_trans(state).to(self.device)
         else:
             return torch.tensor(state).to(self.device)
 
