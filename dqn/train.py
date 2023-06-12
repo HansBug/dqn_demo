@@ -40,7 +40,10 @@ def train_dqn(env, workdir, max_episodes: int = 10000, max_steps: int = 1000, re
             agent.replay_buffer.append(state, action, reward, next_state, done)
 
             state = next_state
-            train_metrics = agent.train_step()
+            train_metrics = {
+                'eps': eps,
+                **agent.train_step(),
+            }
             train_step += 1
             logging.info(f'Train step {train_step}, metrics: {train_metrics!r}')
             for key, value in train_metrics.items():
