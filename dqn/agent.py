@@ -4,7 +4,6 @@ import torch
 from torch import optim, nn
 
 from .base import _GLOBAL_DEVICE
-from .model import Network
 from .replay_buffer import ReplayBuffer
 from .state import _get_state_trans
 
@@ -22,8 +21,8 @@ class Agent:
         self.state_trans = _get_state_trans(state_trans)(state_dims, self.device)
         self.replay_buffer = ReplayBuffer(replay_buffer_size, self.device, self._state_map)
 
-        self.model = Network(self.state_trans.input_dims, action_dims).to(self.device)
-        self.target = Network(self.state_trans.input_dims, action_dims).to(self.device)
+        self.model = self.state_trans.create_model(action_dims).to(self.device)
+        self.target = self.state_trans.create_model(action_dims).to(self.device)
         self.save_target()
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
@@ -46,8 +45,8 @@ class Agent:
 
     def select_action_without_eps(self, state):
         with torch.no_grad():
-            state = self._state_map(state)
-            return self.model(state).argmax().item()
+            state = self._state_map(state).unsqueeze(0)
+            return self.model(state)[0].argmax().item()
 
     def train_step(self):
         if len(self.replay_buffer) < self.batch_size:

@@ -2,8 +2,10 @@ from typing import Type, Dict
 
 import torch
 import torch.nn.functional as F
+from torch import nn
 
 from .base import _GLOBAL_DEVICE
+from .model import Network, CNN
 
 _STATE_TRANS: Dict[str, Type['BaseStateTransform']] = {}
 
@@ -25,6 +27,15 @@ class BaseStateTransform:
         self.state_dims = state_dims
         self.device = device
 
+    def state_trans(self, state: int):
+        raise NotImplementedError
+
+    def create_model(self, action_dims: int) -> nn.Module:
+        raise NotImplementedError
+
+
+class SimpleStateTransform(BaseStateTransform):
+
     def _input_dims(self):
         raise NotImplementedError
 
@@ -40,27 +51,36 @@ class BaseStateTransform:
         assert new_state.shape[-1] == self._input_dims()
         return new_state.float().to(self.device)
 
+    def create_model(self, action_dims: int) -> nn.Module:
+        raise NotImplementedError
+
 
 @_register_state_trans('standalone')
-class StandaloneStateTransform(BaseStateTransform):
+class StandaloneStateTransform(SimpleStateTransform):
     def _input_dims(self):
         return 1
 
     def _trans(self, state: int):
         return torch.tensor([state]).float()
 
+    def create_model(self, action_dims: int) -> nn.Module:
+        return Network(self._input_dims(), action_dims)
+
 
 @_register_state_trans('one_hot')
-class OneHotStateTransform(BaseStateTransform):
+class OneHotStateTransform(SimpleStateTransform):
     def _input_dims(self):
         return self.state_dims
 
     def _trans(self, state: int):
         return F.one_hot(torch.tensor(state), num_classes=self.state_dims).float()
 
+    def create_model(self, action_dims: int) -> nn.Module:
+        return Network(self._input_dims(), action_dims)
 
-@_register_state_trans('one_shot_xy')
-class OneHotStateTransform(BaseStateTransform):
+
+@_register_state_trans('one_hot_xy')
+class OneHotStateTransform(SimpleStateTransform):
     def _input_dims(self):
         return self.state_dims + 2
 
@@ -68,3 +88,17 @@ class OneHotStateTransform(BaseStateTransform):
         oh = F.one_hot(torch.tensor(state), num_classes=self.state_dims).float()
         xy = torch.tensor([state // 12, state % 12]).float()
         return torch.cat([oh, xy]).float()
+
+    def create_model(self, action_dims: int) -> nn.Module:
+        return Network(self._input_dims(), action_dims)
+
+
+@_register_state_trans('cnn')
+class CNNTransform(BaseStateTransform):
+    def state_trans(self, state: int):
+        oh = F.one_hot(torch.tensor(state), num_classes=self.state_dims).float()
+        oh = oh.reshape(4, 12).unsqueeze(0)
+        return oh
+
+    def create_model(self, action_dims: int) -> nn.Module:
+        return CNN((4, 12), action_dims)
