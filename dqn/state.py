@@ -98,7 +98,7 @@ class CNNTransform(BaseStateTransform):
     def state_trans(self, state: int):
         oh = F.one_hot(torch.tensor(state), num_classes=self.state_dims).float()
         oh = oh.reshape(4, 12).unsqueeze(0)
-        return oh
+        return oh.to(self.device)
 
     def create_model(self, action_dims: int) -> nn.Module:
         return CNN((4, 12), action_dims)
